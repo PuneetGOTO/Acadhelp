@@ -179,6 +179,14 @@ reference_data_count() {
     table_count campuses
 }
 
+ensure_default_period() {
+    log "Ensuring default academic period exists"
+    compose exec -T app php artisan tinker --execute='
+$period = \App\Models\Period::ensure_default_period();
+echo $period->id;
+'
+}
+
 write_admin_credentials() {
     install -m 600 /dev/null "$ADMIN_CREDENTIALS_FILE"
     {
@@ -291,6 +299,8 @@ deploy() {
     elif [ "$SEED_DATABASE" = "auto" ]; then
         log "Skipping automatic seed; existing reference data detected"
     fi
+
+    ensure_default_period
 
     if [ "$CREATE_ADMIN" = "true" ] || { [ "$CREATE_ADMIN" = "auto" ] && [ "$users_before_seed" = "0" ]; }; then
         ensure_admin_user true

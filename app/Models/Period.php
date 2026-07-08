@@ -19,7 +19,7 @@ class Period extends Model
 
     public $timestamps = false;
 
-    protected $fillable = ['name', 'year_id', 'start', 'end', 'archived'];
+    protected $fillable = ['name', 'year_id', 'start', 'end', 'archived', 'order'];
 
     protected $casts = [
         'start' => 'date',
@@ -54,19 +54,68 @@ class Period extends Model
      */
     public static function get_default_period(): Period
     {
-        $configPeriod = Config::where('name', 'current_period');
+        $currentPeriodId = Config::where('name', 'current_period')->value('value');
 
-        if ($configPeriod->exists()) {
-            $currentPeriodId = $configPeriod->first()->value;
+        if ($currentPeriodId) {
+            $currentPeriod = self::find($currentPeriodId);
 
-            if (self::where('id', $currentPeriodId)->count() > 0) {
-                return self::find($currentPeriodId);
-            } elseif ($nextActivePeriod = self::where('end', '>=', date('Y-m-d'))->first()) {
+            if ($currentPeriod) {
+                return $currentPeriod;
+            } elseif ($nextActivePeriod = self::active()->where('end', '>=', date('Y-m-d'))->first()) {
                 return $nextActivePeriod;
             }
         }
 
-        return self::orderByDesc('end')->first();
+        $defaultPeriod = self::active()->orderByDesc('end')->first()
+            ?? self::orderByDesc('end')->first();
+
+        return $defaultPeriod ?? self::ensure_default_period();
+    }
+
+    /**
+     * Make sure a fresh installation always has a usable period.
+     */
+    public static function ensure_default_period(): Period
+    {
+        $period = self::active()->orderByDesc('end')->first()
+            ?? self::orderByDesc('end')->first();
+
+        if (! $period) {
+            $year = Year::firstOrCreate(['name' => (string) now()->year]);
+
+            $period = self::withoutGlobalScopes()->firstOrCreate(
+                ['name' => 'Default'],
+                [
+                    'year_id' => $year->id,
+                    'start' => now()->startOfDay(),
+                    'end' => now()->addMonth()->startOfDay(),
+                    'order' => 1,
+                    'archived' => false,
+                ],
+            );
+        }
+
+        self::syncMissingDefaultPeriodConfig($period);
+
+        return $period;
+    }
+
+    protected static function syncMissingDefaultPeriodConfig(Period $period): void
+    {
+        foreach (['current_period', 'default_enrollment_period'] as $configName) {
+            $configuredPeriodId = Config::where('name', $configName)->value('value');
+
+            if (! $configuredPeriodId || ! self::withoutGlobalScopes()->whereKey($configuredPeriodId)->exists()) {
+                Config::updateOrCreate(['name' => $configName], ['value' => $period->id]);
+            }
+        }
+
+        $firstPeriod = self::withoutGlobalScopes()->orderBy('id')->first() ?? $period;
+        $configuredFirstPeriodId = Config::where('name', 'first_period')->value('value');
+
+        if (! $configuredFirstPeriodId || ! self::withoutGlobalScopes()->whereKey($configuredFirstPeriodId)->exists()) {
+            Config::updateOrCreate(['name' => 'first_period'], ['value' => $firstPeriod->id]);
+        }
     }
 
     /**
@@ -74,9 +123,9 @@ class Period extends Model
      */
     public static function get_enrollments_period()
     {
-        $selected_period = Config::where('name', 'default_enrollment_period')->first()->value;
+        $selected_period = Config::where('name', 'default_enrollment_period')->value('value');
 
-        if (self::where('id', $selected_period)->count() > 0) {
+        if ($selected_period && self::where('id', $selected_period)->count() > 0) {
             return self::find($selected_period);
         } else {
             // if the current period ends within 15 days, switch to the next one
@@ -84,7 +133,7 @@ class Period extends Model
 
             // the number of days between the end and today is 2x less than the number of days between start and end
             if (Carbon::parse($default_period->end)->diffInDays() < 0.5 * Carbon::parse($default_period->start)->diffInDays($default_period->end)) {
-                return self::where('id', '>', $default_period->id)->orderBy('id')->first();
+                return self::where('id', '>', $default_period->id)->orderBy('id')->first() ?? $default_period;
             } else {
                 return $default_period;
             }
