@@ -156,6 +156,11 @@ initial_user_count() {
         | tr -dc '0-9'
 }
 
+reference_data_count() {
+    compose exec -T app php artisan tinker --execute='echo \App\Models\Campus::query()->count();' \
+        | tr -dc '0-9'
+}
+
 write_admin_credentials() {
     install -m 600 /dev/null "$ADMIN_CREDENTIALS_FILE"
     {
@@ -259,9 +264,14 @@ deploy() {
     local users_before_seed
     users_before_seed="$(initial_user_count || printf '0')"
 
-    if [ "$SEED_DATABASE" = "true" ] || { [ "$SEED_DATABASE" = "auto" ] && [ "$users_before_seed" = "0" ]; }; then
+    local reference_rows
+    reference_rows="$(reference_data_count || printf '0')"
+
+    if [ "$SEED_DATABASE" = "true" ] || { [ "$SEED_DATABASE" = "auto" ] && [ "$users_before_seed" = "0" ] && [ "$reference_rows" = "0" ]; }; then
         log "Seeding reference data"
         compose exec -T app php artisan db:seed --class=ProdSeeder --force
+    elif [ "$SEED_DATABASE" = "auto" ]; then
+        log "Skipping automatic seed; existing reference data detected"
     fi
 
     if [ "$CREATE_ADMIN" = "true" ] || { [ "$CREATE_ADMIN" = "auto" ] && [ "$users_before_seed" = "0" ]; }; then
