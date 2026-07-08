@@ -1,3 +1,7 @@
+@php
+    $localeLabels = ['en' => 'EN', 'es' => 'ES', 'fr' => 'FR', 'pt' => 'PT', 'zh' => '中文'];
+@endphp
+
 <div class="flex items-center gap-x-1">
     @foreach ($locales as $locale)
         <button
@@ -8,7 +12,7 @@
                 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5' => $currentLocale !== $locale,
             ])
         >
-            {{ strtoupper($locale) }}
+            {{ $localeLabels[$locale] ?? strtoupper($locale) }}
         </button>
     @endforeach
 </div>

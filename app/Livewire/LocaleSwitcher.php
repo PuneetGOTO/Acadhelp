@@ -16,7 +16,7 @@ class LocaleSwitcher extends Component
 
     public function switchLocale(string $locale): void
     {
-        $allowed = config('app.translatable_locales', ['en', 'es', 'fr']);
+        $allowed = config('app.translatable_locales', ['en', 'es', 'fr', 'pt', 'zh']);
 
         if (! in_array($locale, $allowed)) {
             return;
@@ -40,7 +40,7 @@ class LocaleSwitcher extends Component
     public function render(): \Illuminate\View\View
     {
         return view('livewire.locale-switcher', [
-            'locales' => config('app.translatable_locales', ['en', 'es', 'fr']),
+            'locales' => config('app.translatable_locales', ['en', 'es', 'fr', 'pt', 'zh']),
         ]);
     }
 }

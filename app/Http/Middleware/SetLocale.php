@@ -33,7 +33,7 @@ class SetLocale
             return $request->session()->get('locale');
         }
 
-        $allowed = config('app.translatable_locales', ['en', 'es', 'fr']);
+        $allowed = config('app.translatable_locales', ['en', 'es', 'fr', 'pt', 'zh']);
         $preferred = $request->getPreferredLanguage($allowed);
 
         if ($preferred) {

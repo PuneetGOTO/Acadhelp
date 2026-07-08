@@ -17,6 +17,7 @@ class ProdSeeder extends Seeder
     {
         $this->call([
             ReferenceDataSeeder::class,
+            ChineseReferenceTranslationsSeeder::class,
             PermissionsSeeder::class,
         ]);
 

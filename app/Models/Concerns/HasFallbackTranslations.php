@@ -5,8 +5,8 @@ namespace App\Models\Concerns;
 use Spatie\Translatable\HasTranslations;
 
 /**
- * Simplified translatable trait that reads fr > es > en
- * and always writes to the 'fr' locale.
+ * Simplified translatable trait that reads the requested locale first,
+ * then falls back through fr > es > en, and always writes to the 'fr' locale.
  *
  * Keeps compatibility with the existing JSON column structure
  * from Spatie's HasTranslations without requiring per-locale management.
@@ -23,7 +23,9 @@ trait HasFallbackTranslations
     {
         $translations = $this->getTranslations($key);
 
-        foreach (static::$localePriority as $fallbackLocale) {
+        $localePriority = array_values(array_unique([$locale, ...static::$localePriority]));
+
+        foreach ($localePriority as $fallbackLocale) {
             if (isset($translations[$fallbackLocale]) && $translations[$fallbackLocale] !== '') {
                 return $translations[$fallbackLocale];
             }

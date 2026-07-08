@@ -133,6 +133,8 @@ prepare_env() {
     set_env APP_URL "$app_url"
     set_env APP_PORT "$APP_PORT"
     set_env APP_HTTPS_PORT "$APP_HTTPS_PORT"
+    set_env APP_LOCALE "${APP_LOCALE:-$(env_value APP_LOCALE || printf 'en')}"
+    set_env APP_FALLBACK_LOCALE "${APP_FALLBACK_LOCALE:-$(env_value APP_FALLBACK_LOCALE || printf 'en')}"
     set_env DB_CONNECTION "${DB_CONNECTION:-mariadb}"
     set_env DB_HOST "${DB_HOST:-mariadb}"
     set_env DB_PORT "${DB_PORT:-3306}"
@@ -185,6 +187,11 @@ ensure_default_period() {
 $period = \App\Models\Period::ensure_default_period();
 echo $period->id;
 '
+}
+
+ensure_chinese_reference_translations() {
+    log "Ensuring Chinese reference translations exist"
+    compose exec -T app php artisan db:seed --class=ChineseReferenceTranslationsSeeder --force
 }
 
 write_admin_credentials() {
@@ -301,6 +308,7 @@ deploy() {
     fi
 
     ensure_default_period
+    ensure_chinese_reference_translations
 
     if [ "$CREATE_ADMIN" = "true" ] || { [ "$CREATE_ADMIN" = "auto" ] && [ "$users_before_seed" = "0" ]; }; then
         ensure_admin_user true
