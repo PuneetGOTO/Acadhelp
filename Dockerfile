@@ -49,4 +49,7 @@ RUN chown -R www-data:www-data /app/storage /app/bootstrap/cache
 
 EXPOSE 80 443
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+    CMD curl -fsS http://localhost/ >/dev/null || exit 1
+
 CMD ["frankenphp", "run", "--config", "/etc/caddy/Caddyfile"]
