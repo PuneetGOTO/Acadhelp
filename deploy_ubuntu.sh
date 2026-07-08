@@ -151,14 +151,32 @@ compose() {
     docker compose --env-file "$APP_DIR/.env" -f "$APP_DIR/docker-compose.yml" "$@"
 }
 
-initial_user_count() {
-    compose exec -T app php artisan tinker --execute='echo \App\Models\User::query()->count();' \
+table_count() {
+    local table="$1"
+    local database
+    local username
+    local password
+
+    database="$(env_value DB_DATABASE)"
+    username="$(env_value DB_USERNAME)"
+    password="$(env_value DB_PASSWORD)"
+
+    compose exec -T mariadb mariadb \
+        --batch \
+        --skip-column-names \
+        --user="$username" \
+        --password="$password" \
+        "$database" \
+        --execute="SELECT COUNT(*) FROM \`${table}\`;" 2>/dev/null \
         | tr -dc '0-9'
 }
 
+initial_user_count() {
+    table_count users
+}
+
 reference_data_count() {
-    compose exec -T app php artisan tinker --execute='echo \App\Models\Campus::query()->count();' \
-        | tr -dc '0-9'
+    table_count campuses
 }
 
 write_admin_credentials() {
